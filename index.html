@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06121f">
+<title>Torneio de tênis por equipes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{--ball:#d9f24a;--line:rgba(233,241,234,.2)}
+body{font-family:'Barlow',system-ui,sans-serif;color:#e6efe8;min-height:100vh;padding-bottom:env(safe-area-inset-bottom);
+background:radial-gradient(900px 500px at 12% -10%,#14503b 0,transparent 60%),radial-gradient(800px 500px at 100% 0,#0d305a 0,transparent 55%),#06121f}
+h1,h2,h3,.disp{font-family:'Barlow Condensed',system-ui,sans-serif;letter-spacing:.01em}
+.panel{background:rgba(9,32,28,.6);border:1px solid var(--line);border-radius:.75rem;padding:1rem}
+.mc{display:block;width:100%;min-width:190px;text-align:left;background:rgba(8,24,40,.78);border:1px solid var(--line);border-radius:.5rem;overflow:hidden;transition:border-color .15s}
+.mc:not(.off):hover{border-color:var(--ball)}.mc.off{opacity:.55;cursor:default}
+.mh{display:flex;justify-content:space-between;gap:.5rem;font-size:.75rem;color:#8fb3a3;padding:.45rem .75rem 0}
+.row{display:flex;justify-content:space-between;gap:.5rem;padding:.45rem .75rem;color:#c5d6cc}.row i{color:#6d8a7c}
+.row.win{color:var(--ball);font-weight:700;background:rgba(217,242,74,.08)}
+.inp{width:100%;background:#071a17;border:1px solid #1f5a45;border-radius:.5rem;padding:.65rem;text-align:center;font-size:1.15rem;color:#fff}
+.txt{text-align:left;font-size:1rem}
+.btn{background:var(--ball);color:#0a1f12;font-weight:700;border-radius:.5rem;padding:.75rem 1.2rem}
+.btn2{border:1px solid rgba(233,241,234,.3);border-radius:.5rem;padding:.55rem .9rem}
+.badge{background:var(--ball);color:#0a1f12;font-weight:700;border-radius:999px;padding:.15rem .75rem;font-size:.9rem}
+.fmt{display:block;text-align:left;border:1px solid var(--line);border-radius:.75rem;padding:1rem;background:rgba(8,24,40,.6);width:100%}
+.fmt.on{border-color:var(--ball);box-shadow:0 0 0 1px var(--ball) inset}
+:focus-visible{outline:2px solid var(--ball);outline-offset:2px}
+th{font-weight:600}
+.mh{width:100%;text-align:left}.sc{min-width:2rem;text-align:right;font-weight:700}.row.bye{opacity:.5}
+.slot{flex:1;min-width:0;background:transparent;border-bottom:1px dashed rgba(233,241,234,.3);color:inherit;font:inherit;padding:0}.slot::placeholder{color:#6d8a7c}
+.catname{background:transparent;font-family:'Barlow Condensed',sans-serif;font-size:2.25rem;font-weight:700;width:100%;border-bottom:1px dashed var(--line)}
+select.btn2{background:#071a17;color:#e6efe8}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app" class="max-w-6xl mx-auto px-4 py-6"></div>
+<div id="modal"></div>
+<script>
+const KEY='tenis_torneio_v1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY2='tenis_torneios_v2';
+let DB={cur:null,list:{}};
+try{const x=JSON.parse(localStorage.getItem(KEY2)),o=JSON.parse(localStorage.getItem(KEY));
+  if(x&&x.list)DB=x; else if(o)DB={cur:'c1',list:{c1:{...o,name:o.name||'Categoria 1'}}};}catch(e){}
+let S=DB.list[DB.cur]||null, selFmt=8, selN=8, draft=[], prevCat=null;
+const save=()=>{if(S&&DB.cur)DB.list[DB.cur]=S;try{localStorage.setItem(KEY2,JSON.stringify(DB))}catch(e){}};
+const isBye=n=>!!n&&n.trim().toLowerCase()==='bye';
+// numeração padrão dos jogos (igual à chave oficial): J1-J4 classificação, J5-J6 principal, J7 final, J8-J9 repescagem, J10 final da repescagem
+const GNUM={Q1:1,Q2:2,Q3:3,Q4:4,S1:5,S2:6,F:7,I1:8,I2:9,IF:10,R1:1,R2:2,R3:3,GW1:4,GW2:5,GW3:6,GI1:7,GI2:8,GI3:9};
+const meta=id=>(S.meta&&S.meta[id])||{};
+const gn=id=>meta(id).n||'J'+GNUM[id];
+const when=id=>{const m=meta(id);return [m.d?m.d.slice(8)+'/'+m.d.slice(5,7):'',m.h?m.h.replace(':','h'):''].filter(Boolean).join(' - ')};
+
+// ── Estrutura dos confrontos: cada lado é uma equipe (tm) ou o vencedor/perdedor de outro jogo (wn/ls)
+const tm=i=>({t:i}), wn=m=>({m,r:'w'}), ls=m=>({m,r:'l'});
+function defs(f){
+  if(f===8) return [
+    {id:'Q1',a:tm(0),b:tm(1)},{id:'Q2',a:tm(2),b:tm(3)},{id:'Q3',a:tm(4),b:tm(5)},{id:'Q4',a:tm(6),b:tm(7)},
+    {id:'S1',a:wn('Q1'),b:wn('Q2')},{id:'S2',a:wn('Q3'),b:wn('Q4')},{id:'F',a:wn('S1'),b:wn('S2')},
+    {id:'I1',a:ls('Q1'),b:ls('Q2')},{id:'I2',a:ls('Q3'),b:ls('Q4')},{id:'IF',a:wn('I1'),b:wn('I2')}];
+  const g=(p,f)=>[{id:p+'1',a:f('R1'),b:f('R2')},{id:p+'2',a:f('R2'),b:f('R3')},{id:p+'3',a:f('R1'),b:f('R3')}];
+  return [{id:'R1',a:tm(0),b:tm(1)},{id:'R2',a:tm(2),b:tm(3)},{id:'R3',a:tm(4),b:tm(5)},...g('GW',wn),...g('GI',ls)];
+}
+const D=()=>defs(S.fmt), find=id=>D().find(d=>d.id===id);
+function who(x){
+  if(x.t!==undefined) return S.teams[x.t]||null;
+  const r=S.res[x.m]; if(!r) return null;
+  return (x.r==='w')===(r.ja>r.jb)?r.ta:r.tb;
+}
+const teamsOf=d=>[who(d.a),who(d.b)];
+// Se uma equipe de um jogo já lançado mudou (resultado anterior foi editado), o placar é apagado
+function normalize(){
+  let ch=true,n=0;
+  while(ch&&n++<30){ch=false;
+    for(const d of D()){
+      const [a,b]=teamsOf(d), r=S.res[d.id], by=!!(a&&b)&&isBye(a)!==isBye(b);
+      if(r&&(a!==r.ta||b!==r.tb||!!r.bye!==by)){delete S.res[d.id];ch=true}
+      if(by&&!S.res[d.id]){S.res[d.id]={ta:a,tb:b,ja:isBye(b)?1:0,jb:isBye(a)?1:0,sa:0,sb:0,ga:0,gb:0,bye:true};ch=true}
+    }}
+}
+const champ=id=>S.res[id]?who(wn(id)):null;
+
+// ── Classificação dos triangulares: vitórias, saldo de jogos, de sets e de games
+function stand(p){
+  const ds=D().filter(d=>d.id.startsWith(p));
+  const rows=[who(ds[0].a),who(ds[0].b),who(ds[1].b)].map(n=>({n,v:0,j:0,s:0,g:0}));
+  ds.forEach(d=>{
+    const r=S.res[d.id]; if(!r) return;
+    const A=rows.find(x=>x.n===r.ta), B=rows.find(x=>x.n===r.tb);
+    A.v+=r.ja>r.jb?1:0; B.v+=r.jb>r.ja?1:0;
+    if(!r.bye){A.j+=r.ja-r.jb; B.j+=r.jb-r.ja; A.s+=r.sa-r.sb; B.s+=r.sb-r.sa; A.g+=r.ga-r.gb; B.g+=r.gb-r.ga;}
+  });
+  rows.sort((x,y)=>y.v-x.v||y.j-x.j||y.s-x.s||y.g-x.g);
+  const done=ds.every(d=>S.res[d.id]);
+  const real=rows.filter(x=>!isBye(x.n));
+  return {ds,rows:real,done,tie:done&&real.length>1&&['v','j','s','g'].every(k=>real[0][k]===real[1][k])};
+}
+
+// ── Componentes
+function card(d){
+  const [a,b]=teamsOf(d), r=S.res[d.id], w=when(d.id);
+  const row=(n,x,sc,win)=>{
+    const nm=x.t!==undefined?`<input class="slot" maxlength="30" placeholder="Nome da equipe" value="${esc(S.teams[x.t]||'')}" onchange="setTeam(${x.t},this.value)" aria-label="Nome da equipe">`:`<span class="truncate">${n?esc(n):'<i>A definir</i>'}</span>`;
+    return `<div class="row ${win?'win':''} ${isBye(n)?'bye':''}">${nm}<button class="sc" onclick="openM('${d.id}')" aria-label="Placar">${r?(r.bye?(win?'✓':''):sc):'+'}</button></div>`;
+  };
+  return `<div class="mc"><button class="mh" onclick="openM('${d.id}')"><span>${esc(gn(d.id))}${w?' · '+w:''}</span><span>${r?(r.bye?'Avança (BYE)':'Editar'):'Horário e placar'}</span></button>${row(a,d.a,r&&r.ja,r&&r.ja>r.jb)}${row(b,d.b,r&&r.jb,r&&r.jb>r.ja)}</div>`;
+}
+function setTeam(i,v){
+  v=v.trim(); const old=S.teams[i];
+  if(v&&S.teams.some((x,k)=>k!==i&&x&&x.toLowerCase()===v.toLowerCase())){alert('Já existe uma equipe com esse nome.');v=old||''}
+  S.teams[i]=v;
+  if(old&&v) Object.values(S.res).forEach(r=>{if(r.ta===old)r.ta=v;if(r.tb===old)r.tb=v});
+  normalize(); save();
+  setTimeout(()=>{const k=[...document.querySelectorAll('.slot')].indexOf(document.activeElement);render();if(k>=0)document.querySelectorAll('.slot')[k].focus()},0);
+}
+const col=(title,ids,lab)=>`<div class="flex flex-col flex-1 min-w-[200px] snap-start"><div class="text-sm text-slate-400 mb-2">${title}</div>
+  <div class="flex flex-col justify-around gap-3 flex-1">${ids.map((id,i)=>card(find(id),lab+(ids.length>1?' '+(i+1):''))).join('')}</div></div>`;
+const section=(title,cid,cols,note)=>`<section class="panel mb-4"><div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+  <h3 class="text-2xl">${title}</h3>${champ(cid)?`<span class="badge">🏆 ${esc(champ(cid))}</span>`:''}</div>
+  ${note?`<p class="text-sm text-slate-400 mb-3">${note}</p>`:'<div class="mb-3"></div>'}
+  <div class="flex gap-4 overflow-x-auto snap-x pb-2">${cols}</div></section>`;
+
+function view8(){
+  return section('Chave principal','F',
+    col('Classificação',['Q1','Q2','Q3','Q4'],'Quartas')+col('Semifinais',['S1','S2'],'Semifinal')+col('Grande final',['F'],'Final'),
+    'Quem perde nas quartas segue para a chave de incentivo.')+
+  section('Repescagem (incentivo)','IF',
+    col('Repescagem',['I1','I2'],'Semifinal')+col('Final da repescagem',['IF'],'Final'),
+    'Os quatro perdedores das quartas entram aqui automaticamente.');
+}
+function group(p,title){
+  const st=stand(p), sg=n=>(n>0?'+':'')+n, win=st.done&&!st.tie;
+  return `<section class="panel"><div class="flex flex-wrap items-center justify-between gap-2 mb-3"><h3 class="text-2xl">${title}</h3>
+    ${win?`<span class="badge">🏆 ${esc(st.rows[0].n)}</span>`:''}</div>
+    <table class="w-full text-sm"><thead><tr class="text-slate-400 text-left"><th>Equipe</th><th title="Vitórias">V</th><th title="Saldo de jogos">SJ</th><th title="Saldo de sets">SS</th><th title="Saldo de games">SG</th></tr></thead><tbody>
+    ${st.rows.map((x,i)=>`<tr class="border-t border-white/10 ${i===0&&win?'text-[#d9f24a] font-bold':''}"><td class="py-2">${i+1}. ${x.n?esc(x.n):'<i>A definir</i>'}</td><td>${x.v}</td><td>${sg(x.j)}</td><td>${sg(x.s)}</td><td>${sg(x.g)}</td></tr>`).join('')}</tbody></table>
+    <p class="text-xs text-slate-400 mt-2">V vitórias, SJ saldo de jogos, SS saldo de sets, SG saldo de games. O desempate segue essa ordem.</p>
+    ${st.tie?'<p class="text-sm mt-2 text-amber-300">Empate em todos os critérios. Defina o campeão manualmente.</p>':''}
+    <div class="grid gap-3 mt-3">${st.ds.map((d,i)=>card(d,'Rodada '+(i+1))).join('')}</div></section>`;
+}
+function view6(){
+  return `<section class="panel mb-4"><h3 class="text-2xl mb-1">Rodada 1: eliminatória</h3>
+    <p class="text-sm text-slate-400 mb-3">Quem vence vai para o grupo do título. Quem perde vai para o grupo de incentivo.</p>
+    <div class="grid gap-3 sm:grid-cols-3">${['R1','R2','R3'].map((id,i)=>card(find(id),'Jogo '+(i+1))).join('')}</div></section>
+    <div class="grid gap-4 lg:grid-cols-2">${group('GW','Grupo do título')}${group('GI','Grupo de incentivo')}</div>`;
+}
+
+// ── Telas
+function setup(){
+  const fmts=[[8,'8 equipes: eliminatória com incentivo','Quartas, semifinais e final. Quem perde nas quartas disputa a chave de incentivo.'],
+              [6,'6 equipes: eliminatória e triangulares','Rodada inicial, depois um triangular para vencedores e outro para perdedores. Mais vitórias leva o título.']];
+  return `<header class="mb-6"><h1 class="text-4xl sm:text-5xl font-bold">🎾 Torneio de tênis por equipes</h1>
+    <p class="text-slate-300 mt-1">Escolha o formato, digite as equipes e acompanhe os confrontos.</p><button class="btn mt-4" onclick="presetOuro()">Carregar a chave oficial Damas Ouro</button></header>
+    <div class="grid gap-3 sm:grid-cols-2 mb-6">${fmts.map(([n,t,d])=>`<button class="fmt ${selFmt===n?'on':''}" onclick="selFmt=${n};selN=${n};render()"><div class="disp text-2xl">${t}</div><div class="text-sm text-slate-300 mt-1">${d}</div></button>`).join('')}</div>
+    <section class="panel"><label class="block text-sm text-slate-300 mb-4">Categoria<input id="cat" class="inp txt mt-1" maxlength="40" placeholder="Ex.: Damas Ouro" value="${esc(draft.cat||'')}" oninput="draft.cat=this.value"></label>
+    <div class="grid grid-cols-2 gap-3 mb-4">${[selFmt,selFmt-1].map(n=>`<button class="fmt ${selN===n?'on':''}" style="padding:.6rem 1rem" onclick="selN=${n};render()">${n} equipes${n<selFmt?' (1 BYE)':''}</button>`).join('')}</div>
+    <h2 class="text-2xl mb-1">Equipes</h2><p class="text-sm text-slate-400 mb-3">Opcional agora: dá para digitar os nomes direto na chave.</p>
+    <div class="grid gap-3 sm:grid-cols-2">${[...Array(selN)].map((_,i)=>`<label class="block text-sm text-slate-300">Equipe ${i+1}<input class="inp txt mt-1" maxlength="30" placeholder="Equipe ${i+1}" value="${esc(draft[i]||'')}" oninput="draft[${i}]=this.value"></label>`).join('')}</div>
+    <label class="flex items-center gap-2 mt-4 text-sm"><input id="shuf" type="checkbox" class="w-4 h-4"> Sortear a ordem dos confrontos</label>
+    <p id="serr" class="text-sm text-amber-300 mt-2 min-h-[1.25rem]"></p>
+    <button class="btn w-full sm:w-auto mt-2" onclick="gen()">Gerar torneio</button>${prevCat?`<button class="btn2 mt-2 ml-2" onclick="switchCat(prevCat)">Cancelar</button>`:''}</section>`;
+}
+function gen(){
+  const names=[...Array(selN)].map((_,i)=>(draft[i]||'').trim());
+  while(names.length<selFmt) names.push('BYE');
+  const ks=names.filter(Boolean).map(x=>x.toLowerCase());
+  if(new Set(ks).size<ks.length){$('serr').textContent='Cada equipe precisa ter um nome diferente.';return}
+  if($('shuf').checked) for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]]}
+  const id='c'+Date.now();
+  S={fmt:selFmt,teams:names,res:{},meta:{},name:($('cat').value||'').trim()||'Categoria '+(Object.keys(DB.list).length+1)};
+  DB.cur=id; draft=[]; normalize(); save(); render(); scrollTo(0,0);
+}
+// Chave oficial da foto (Damas Ouro). O ano da data não aparece na foto; foi usado 2026.
+const OURO={name:'Damas Ouro',teams:['CAC 1','Kosmos 1','T&T Guarani Campinas','Nippon 1','Helvetia','Capital Finance','CAC 2','ACEAS 1'],
+  when:{Q1:'10/10 15:00',Q2:'10/10 15:00',Q3:'10/10 15:00',Q4:'10/10 15:00',S1:'11/10 17:00',S2:'11/10 17:00',F:'12/10 09:30',I1:'11/10 14:00',I2:'11/10 14:00',IF:'12/10 07:00'}};
+function presetOuro(){
+  if(Object.values(DB.list).some(c=>c.name===OURO.name)&&!confirm('Já existe uma categoria Damas Ouro. Criar outra cópia?'))return;
+  const meta={};
+  Object.entries(OURO.when).forEach(([id,v])=>{const [d,h]=v.split(' ');meta[id]={n:'J'+GNUM[id],d:'2026-'+d.slice(3)+'-'+d.slice(0,2),h}});
+  S={fmt:8,teams:[...OURO.teams],res:{},meta,name:OURO.name};
+  DB.cur='c'+Date.now(); normalize(); save(); render(); scrollTo(0,0);
+}
+function tourney(){
+  const ids=Object.keys(DB.list);
+  return `<header class="flex flex-wrap items-end justify-between gap-3 mb-5"><div class="min-w-0 flex-1" style="min-width:240px">
+    <input class="catname" maxlength="40" value="${esc(S.name||'')}" placeholder="Nome da categoria" aria-label="Categoria" onchange="S.name=this.value.trim();save();render()">
+    <p class="text-slate-300 mt-1">Torneio de ${S.fmt} equipes. Toque em um jogo para lançar horário e placar.</p></div>
+    <div class="flex flex-wrap gap-2">${ids.length>1?`<select class="btn2" aria-label="Trocar de categoria" onchange="switchCat(this.value)">${ids.map(k=>`<option value="${k}" ${k===DB.cur?'selected':''}>${esc(DB.list[k].name||'Sem nome')}</option>`).join('')}</select>`:''}
+    <button class="btn2" onclick="newCat()">Nova categoria</button><button class="btn2 text-red-300" onclick="delCat()">Excluir</button></div></header>${S.fmt===8?view8():view6()}`;
+}
+function switchCat(k){DB.cur=k;S=DB.list[k];save();render();scrollTo(0,0)}
+function newCat(){prevCat=DB.cur;S=null;DB.cur=null;render();scrollTo(0,0)}
+function delCat(){
+  if(!confirm('Excluir esta categoria e todos os resultados dela?'))return;
+  delete DB.list[DB.cur]; const k=Object.keys(DB.list)[0]||null; DB.cur=k; S=k?DB.list[k]:null; save(); render();
+}
+function render(){ $('app').innerHTML=S?tourney():setup(); }
+
+// ── Placar
+function openM(id){
+  const d=find(id), [a,b]=teamsOf(d), r=S.res[id]||{}, adv=id[0]==='G', m=meta(id), can=a&&b&&!r.bye;
+  const pair=(k,lab,hint)=>`<div class="mb-3"><div class="text-sm text-slate-300 mb-1">${lab}${hint?` <span class="text-slate-500">${hint}</span>`:''}</div>
+    <div class="flex items-center gap-2"><input id="${k}a" class="inp" type="number" min="0" inputmode="numeric" value="${r[k+'a']??''}"><span class="text-slate-500">×</span><input id="${k}b" class="inp" type="number" min="0" inputmode="numeric" value="${r[k+'b']??''}"></div></div>`;
+  $('modal').innerHTML=`<div class="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center overflow-y-auto" onclick="if(event.target===this)closeM()">
+    <div class="w-full sm:max-w-md bg-[#0a2420] border border-white/20 rounded-t-2xl sm:rounded-2xl p-5" style="padding-bottom:calc(1.25rem + env(safe-area-inset-bottom))" role="dialog" aria-modal="true">
+    <h3 class="text-2xl mb-3">Dados do jogo</h3>
+    <div class="grid grid-cols-3 gap-2 mb-4"><label class="text-sm text-slate-300">Jogo<input id="mn" class="inp txt" maxlength="8" value="${esc(gn(id))}"></label>
+    <label class="text-sm text-slate-300">Data<input id="md" type="date" class="inp txt" value="${m.d||''}"></label>
+    <label class="text-sm text-slate-300">Hora<input id="mh" type="time" class="inp txt" value="${m.h||''}"></label></div>
+    ${can?`<div class="flex justify-between gap-3 font-semibold mb-2"><span class="truncate">${esc(a)}</span><span class="truncate text-right">${esc(b)}</span></div>${pair('j','Jogos ganhos')}${adv?pair('s','Sets ganhos','(desempate)')+pair('g','Games ganhos','(desempate)'):''}`:`<p class="text-sm text-slate-400 mb-2">${r.bye?'Esta equipe avança sem jogar (BYE).':'Informe as duas equipes na chave para lançar o placar.'}</p>`}
+    <p id="err" class="text-sm text-amber-300 min-h-[1.25rem]"></p>
+    <div class="flex flex-wrap gap-2 mt-2"><button class="btn flex-1" onclick="saveM('${id}')">Salvar</button><button class="btn2" onclick="closeM()">Cancelar</button>
+    ${S.res[id]&&!r.bye?`<button class="btn2 text-red-300" onclick="clearM('${id}')">Limpar placar</button>`:''}</div></div></div>`;
+  setTimeout(()=>($('ja')||$('mn')).focus(),50);
+}
+const closeM=()=>{$('modal').innerHTML=''};
+addEventListener('keydown',e=>{if(e.key==='Escape')closeM()});
+function saveM(id){
+  S.meta=S.meta||{}; S.meta[id]={n:$('mn').value.trim(),d:$('md').value,h:$('mh').value};
+  if($('ja')){
+    const ea=$('ja').value, eb=$('jb').value;
+    if(ea!==''||eb!==''){
+      const [a,b]=teamsOf(find(id)), v=k=>{const e=$(k);return e&&e.value!==''?Math.floor(+e.value):0};
+      const x={ja:v('ja'),jb:v('jb'),sa:v('sa'),sb:v('sb'),ga:v('ga'),gb:v('gb')};
+      if(ea===''||eb===''||Object.values(x).some(n=>!(n>=0))){$('err').textContent='Informe os jogos de cada equipe com números a partir de 0.';return}
+      if(x.ja===x.jb){$('err').textContent='O confronto precisa ter um vencedor. Os jogos não podem empatar.';return}
+      S.res[id]={ta:a,tb:b,...x};
+    }
+  }
+  normalize(); save(); closeM(); render();
+}
+function clearM(id){ delete S.res[id]; normalize(); save(); closeM(); render(); }
+if(S)normalize();
+render();
+</script><script src="ocr.js"></script>
+</body>
+</html>

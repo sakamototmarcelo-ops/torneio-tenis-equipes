@@ -1,0 +1,9 @@
+@media (max-width:650px){
+  body{min-width:320px}.topbar{padding:0 16px;height:64px;position:sticky;top:0;z-index:5}.brand{font-size:15px}.tournament-mini{display:none}
+  main{padding:25px 14px 42px}.intro-row{display:block;margin-bottom:24px}.intro-row h1{font-size:28px}.subhead{font-size:13px;line-height:1.5}
+  .header-actions{margin-top:19px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.header-actions button{min-height:48px;padding:10px 8px}
+  .stats-strip{grid-template-columns:1fr 1fr;padding:16px;gap:16px;margin-bottom:16px}.stats-strip>div{margin:0;padding:0}.format-summary{display:none}.progress-wrap{grid-column:1/-1}.stats-strip strong{font-size:12px}
+  .bracket-panel{padding:16px;min-height:0}.panel-heading{display:block}.panel-heading h2{font-size:15px}.panel-heading p{line-height:1.45}.round-tabs{display:none}.bracket-scroll{margin:0 -4px;padding:30px 0 25px}.bracket{min-width:720px;height:390px}
+  .bracket-footer{gap:12px;flex-wrap:wrap;line-height:1.4}.side-column{display:flex;gap:12px}.side-column .panel{padding:17px}.next-panel{order:-1}.next-match{margin:15px 0 13px}.player-line{height:42px}.primary-btn,.secondary-btn{min-height:44px}.ghost-btn{padding:8px 10px}
+  .modal-actions{position:sticky;bottom:0;background:#fff;padding-top:12px}.score-players{gap:8px}.set-inputs input{width:46px}.dropzone{padding:24px 10px}
+}

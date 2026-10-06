@@ -1,0 +1,1 @@
+.team-input{min-width:0;flex:1;border:0;border-bottom:1px dashed #cdd3d1;background:transparent;padding:3px 0;color:var(--ink);font-size:11px;font-family:Manrope,Arial,sans-serif}.team-input:focus{outline:0;border-bottom-color:#91a94b}.image-match .team-input{width:100%;border-bottom:1px dashed #d8ddda}.image-match .team-input::placeholder{color:#9da6a6}
