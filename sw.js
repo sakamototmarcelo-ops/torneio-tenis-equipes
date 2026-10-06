@@ -1,4 +1,4 @@
-const CACHE='quadra-v5';
+const CACHE='quadra-v6';
 self.addEventListener('install', event => { self.skipWaiting(); event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./','./index.html','./styles.css','./app.js','./ocr.js','./camera.css','./manifest.json','./icon.svg']))); });
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', event => event.respondWith(caches.open(CACHE).then(cache => cache.match(event.request).then(cached => cached || fetch(event.request)))));

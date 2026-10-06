@@ -154,21 +154,17 @@ function setup(){
   const fmts=[[8,'8 equipes: eliminatória com incentivo','Quartas, semifinais e final. Quem perde nas quartas disputa a chave de incentivo.'],
               [6,'6 equipes: eliminatória e triangulares','Rodada inicial, depois um triangular para vencedores e outro para perdedores. Mais vitórias leva o título.']];
   return `<header class="mb-6"><h1 class="text-4xl sm:text-5xl font-bold">🎾 Torneio de tênis por equipes</h1>
-    <p class="text-slate-300 mt-1">Escolha o formato, digite as equipes e acompanhe os confrontos.</p><button class="btn mt-4" onclick="presetOuro()">Carregar a chave oficial Damas Ouro</button></header>
+    <p class="text-slate-300 mt-1">Escolha o formato e abra a chave para preencher as equipes diretamente nos confrontos.</p></header>
     <div class="grid gap-3 sm:grid-cols-2 mb-6">${fmts.map(([n,t,d])=>`<button class="fmt ${selFmt===n?'on':''}" onclick="selFmt=${n};selN=${n};render()"><div class="disp text-2xl">${t}</div><div class="text-sm text-slate-300 mt-1">${d}</div></button>`).join('')}</div>
     <section class="panel"><label class="block text-sm text-slate-300 mb-4">Categoria<input id="cat" class="inp txt mt-1" maxlength="40" placeholder="Ex.: Damas Ouro" value="${esc(draft.cat||'')}" oninput="draft.cat=this.value"></label>
     <div class="grid grid-cols-2 gap-3 mb-4">${[selFmt,selFmt-1].map(n=>`<button class="fmt ${selN===n?'on':''}" style="padding:.6rem 1rem" onclick="selN=${n};render()">${n} equipes${n<selFmt?' (1 BYE)':''}</button>`).join('')}</div>
-    <h2 class="text-2xl mb-1">Equipes</h2><p class="text-sm text-slate-400 mb-3">Opcional agora: dá para digitar os nomes direto na chave.</p>
-    <div class="grid gap-3 sm:grid-cols-2">${[...Array(selN)].map((_,i)=>`<label class="block text-sm text-slate-300">Equipe ${i+1}<input class="inp txt mt-1" maxlength="30" placeholder="Equipe ${i+1}" value="${esc(draft[i]||'')}" oninput="draft[${i}]=this.value"></label>`).join('')}</div>
     <label class="flex items-center gap-2 mt-4 text-sm"><input id="shuf" type="checkbox" class="w-4 h-4"> Sortear a ordem dos confrontos</label>
     <p id="serr" class="text-sm text-amber-300 mt-2 min-h-[1.25rem]"></p>
     <button class="btn w-full sm:w-auto mt-2" onclick="gen()">Gerar torneio</button>${prevCat?`<button class="btn2 mt-2 ml-2" onclick="switchCat(prevCat)">Cancelar</button>`:''}</section>`;
 }
 function gen(){
-  const names=[...Array(selN)].map((_,i)=>(draft[i]||'').trim());
-  while(names.length<selFmt) names.push('BYE');
-  const ks=names.filter(Boolean).map(x=>x.toLowerCase());
-  if(new Set(ks).size<ks.length){$('serr').textContent='Cada equipe precisa ter um nome diferente.';return}
+  const names=Array(selFmt).fill('');
+  if(selN<selFmt) names[selFmt-1]='BYE';
   if($('shuf').checked) for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]]}
   const id='c'+Date.now();
   S={fmt:selFmt,teams:names,res:{},meta:{},name:($('cat').value||'').trim()||'Categoria '+(Object.keys(DB.list).length+1)};
