@@ -111,7 +111,7 @@ function card(d){
 }
 function setTeam(i,v){
   v=v.trim(); const old=S.teams[i];
-  if(v&&S.teams.some((x,k)=>k!==i&&x&&x.toLowerCase()===v.toLowerCase())){alert('Já existe uma equipe com esse nome.');v=old||''}
+  if(v&&v.toLowerCase()!=='bye'&&S.teams.some((x,k)=>k!==i&&x&&x.toLowerCase()!=='bye'&&x.toLowerCase()===v.toLowerCase())){alert('Já existe uma equipe com esse nome.');v=old||''}
   S.teams[i]=v;
   if(old&&v) Object.values(S.res).forEach(r=>{if(r.ta===old)r.ta=v;if(r.tb===old)r.tb=v});
   normalize(); save();
@@ -157,14 +157,13 @@ function setup(){
     <p class="text-slate-300 mt-1">Escolha o formato e abra a chave para preencher as equipes diretamente nos confrontos.</p></header>
     <div class="grid gap-3 sm:grid-cols-2 mb-6">${fmts.map(([n,t,d])=>`<button class="fmt ${selFmt===n?'on':''}" onclick="selFmt=${n};selN=${n};render()"><div class="disp text-2xl">${t}</div><div class="text-sm text-slate-300 mt-1">${d}</div></button>`).join('')}</div>
     <section class="panel"><label class="block text-sm text-slate-300 mb-4">Categoria<input id="cat" class="inp txt mt-1" maxlength="40" placeholder="Ex.: Damas Ouro" value="${esc(draft.cat||'')}" oninput="draft.cat=this.value"></label>
-    <div class="grid grid-cols-2 gap-3 mb-4">${[selFmt,selFmt-1].map(n=>`<button class="fmt ${selN===n?'on':''}" style="padding:.6rem 1rem" onclick="selN=${n};render()">${n} equipes${n<selFmt?' (1 BYE)':''}</button>`).join('')}</div>
+    <p class="text-sm text-slate-400 mb-3">A chave terá ${selFmt} posições. Se necessário, digite <strong>BYE</strong> diretamente em uma ou mais posições da chave.</p>
     <label class="flex items-center gap-2 mt-4 text-sm"><input id="shuf" type="checkbox" class="w-4 h-4"> Sortear a ordem dos confrontos</label>
     <p id="serr" class="text-sm text-amber-300 mt-2 min-h-[1.25rem]"></p>
     <button class="btn w-full sm:w-auto mt-2" onclick="gen()">Gerar torneio</button>${prevCat?`<button class="btn2 mt-2 ml-2" onclick="switchCat(prevCat)">Cancelar</button>`:''}</section>`;
 }
 function gen(){
   const names=Array(selFmt).fill('');
-  if(selN<selFmt) names[selFmt-1]='BYE';
   if($('shuf').checked) for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]]}
   const id='c'+Date.now();
   S={fmt:selFmt,teams:names,res:{},meta:{},name:($('cat').value||'').trim()||'Categoria '+(Object.keys(DB.list).length+1)};
